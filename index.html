@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>랜덤 좌석 배치 추첨기</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* 5. 화면을 꽉 채우는 구성 & 8. 모든 요소를 한 화면 안에 (스크롤 방지) */
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center; /* 세로 중앙 정렬 */
+            height: 100vh; /* 뷰포트 높이 꽉 채우기 */
+            overflow: hidden; /* 스크롤 방지 */
+            background-color: #f0f4f8; /* 배경색 변경 */
+        }
+
+        .container {
+            width: 95%;
+            height: 95vh; /* 화면의 95% 높이 사용 */
+            max-width: 1400px;
+            padding: 20px;
+            background-color: #fff;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            box-sizing: border-box; 
+        }
+        
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 5px;
+            font-size: 2em;
+            font-weight: 700;
+        }
+
+        /* 3. 교탁 영역 */
+        .front-area {
+            text-align: center;
+            margin: 5px 0 15px; /* 간격 조정 */
+        }
+
+        .podium-icon {
+            font-size: 2.2em;
+            color: #795548;
+        }
+        
+        .podium-text {
+            font-weight: bold;
+            color: #555;
+            font-size: 0.8em;
+        }
+
+        /* 교실 레이아웃 (3개 군단 배치) */
+        .class-layout {
+            display: flex;
+            justify-content: center;
+            gap: 15px; /* 군단 간격 */
+            width: 100%;
+            flex-grow: 1; /* 남은 공간을 좌석 배치가 차지 */
+            min-height: 0;
+        }
+
+        /* 군단 공통 스타일 */
+        .seat-cluster {
+            display: grid;
+            gap: 6px; /* 좌석 간격 */
+            padding: 8px;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            /* flex-grow를 사용하여 군단 간 비율 조정 */
+            flex-grow: 1; 
+            min-width: 0;
+        }
+        
+        /* 1. 군단별 그리드 설정 */
+        /* 1모둠: 왼쪽 군단 (2열 5행) */
+        .left-cluster {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(5, 1fr);
+            background-color: #e3f2fd; /* 9. 연한 파란색 */
+        }
+
+        /* 2모둠: 중앙 군단 (2열 4행) */
+        .center-cluster {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            background-color: #fce4ec; /* 9. 연한 분홍색 */
+        }
+
+        /* 3모둠: 오른쪽 군단 (2열 4행) */
+        .right-cluster {
+            grid-template-columns: repeat(2, 1fr);
+            grid-template-rows: repeat(4, 1fr);
+            background-color: #e8f5e9; /* 9. 연한 녹색 */
+        }
+        
+        /* 6. 칸은 꼭 정사각형이 아니어도 됨 (높이를 유연하게) */
+        .seat {
+            width: 100%;
+            height: 100%; /* 그리드 셀 높이 꽉 채우기 */
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 1.2em;
+            font-weight: bold;
+            border-radius: 4px;
+            transition: background-color 0.4s ease-in-out;
+        }
+
+        /* 모둠별 좌석 기본 색상 */
+        #left-cluster .seat { background-color: #2196F3; }
+        #center-cluster .seat { background-color: #E91E63; }
+        #right-cluster .seat { background-color: #4CAF50; }
+        
+        /* 추첨 중 임시 색상 */
+        .seat.drawing { 
+            background-color: #FFC107 !important; 
+            color: #333; 
+            transform: scale(1.05);
+        }
+        
+        /* 버튼 스타일 */
+        #drawButton {
+            padding: 12px 30px;
+            font-size: 1.2em;
+            cursor: pointer;
+            background-color: #673AB7; 
+            color: white;
+            border: none;
+            border-radius: 8px;
+            margin-top: 15px;
+            transition: background-color 0.3s, transform 0.1s;
+            box-shadow: 0 4px 8px rgba(103, 58, 183, 0.4);
+            font-weight: bold;
+        }
+        
+        #drawButton:hover {
+            background-color: #512DA8;
+        }
+        
+        #drawButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        /* 미디어 쿼리: 모바일 최적화 (가로폭 좁을 때) */
+        @media (max-width: 768px) {
+            .container {
+                height: 100vh;
+                padding: 10px;
+            }
+            h1 { font-size: 1.3em; }
+            .class-layout {
+                flex-direction: column;
+                gap: 10px;
+                overflow-y: auto; /* 모바일에서 내용이 넘치면 스크롤 허용 */
+            }
+            .seat-cluster {
+                width: 95%;
+                gap: 4px;
+                /* 모바일에서 3군단을 세로로 배치하고, 좌석 자체는 4열로 조정하여 공간 활용 */
+                grid-template-columns: repeat(4, 1fr);
+                grid-template-rows: auto;
+            }
+            .seat { font-size: 1em; }
+            #drawButton { margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>랜덤 좌석 배치 추첨기 🎲</h1>
+        
+        <div class="front-area">
+            <i class="fas fa-chalkboard-teacher podium-icon"></i>
+            <div class="podium-text">교탁</div>
+        </div>
+
+        <div class="class-layout">
+            <div class="seat-cluster left-cluster" id="left-cluster"></div>
+
+            <div class="seat-cluster center-cluster" id="center-cluster"></div>
+
+            <div class="seat-cluster right-cluster" id="right-cluster"></div>
+        </div>
+
+        <button id="drawButton">✨ 추첨 시작 (26명)</button>
+    </div>
+    
+    <audio id="drumrollSound" src="[YOUR_DRUMROLL_SOUND_URL]" preload="auto"></audio>
+
+    <script>
+        // 1. 좌석 구성 정의
+        const totalSeats = 26;
+        const clusterSpecs = [
+            { id: 'left-cluster', count: 10, defaultColor: '#2196F3' }, 
+            { id: 'center-cluster', count: 8, defaultColor: '#E91E63' }, 
+            { id: 'right-cluster', count: 8, defaultColor: '#4CAF50' }  
+        ];
+        
+        // 2. 번호 범위 정의 (1~16, 18, 19~28) -> 26개 번호
+        const allPossibleNumbers = Array.from({length: 28}, (_, i) => i + 1);
+        // 제외할 번호는 17번
+        const availableNumbers = allPossibleNumbers.filter(n => n !== 17);
+
+        // DOM 요소 캐시
+        const drawButton = document.getElementById('drawButton');
+        const soundElement = document.getElementById('drumrollSound');
+
+        // 좌석 div 생성 함수
+        function createSeatElements() {
+            clusterSpecs.forEach(spec => {
+                const clusterEl = document.getElementById(spec.id);
+                clusterEl.innerHTML = ''; 
+                for (let i = 0; i < spec.count; i++) {
+                    const seat = document.createElement('div');
+                    seat.className = 'seat';
+                    // 초기에는 좌석 번호 대신 '자리'로 표시
+                    seat.textContent = '자리'; 
+                    seat.style.backgroundColor = spec.defaultColor; 
+                    clusterEl.appendChild(seat);
+                }
+            });
+        }
+        
+        // Fisher-Yates 셔플 알고리즘
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        // 2. 추첨 및 배치 함수
+        function drawSeats() {
+            if (drawButton.disabled) return;
+            
+            drawButton.disabled = true;
+            drawButton.textContent = '🎶 추첨 중...';
+
+            // 7. 사운드 재생 시도
+            if (soundElement) {
+                // 사운드가 짧게 반복되도록 설정
+                soundElement.currentTime = 0; 
+                soundElement.play().catch(e => console.log("사운드 자동 재생 실패 (사용자 상호작용 필요):", e));
+            }
+            
+            // 번호를 무작위로 섞기
+            const shuffledNumbers = [...availableNumbers];
+            shuffleArray(shuffledNumbers);
+            
+            const allSeatElements = document.querySelectorAll('.seat');
+            
+            // 추첨 애니메이션 효과 시작
+            allSeatElements.forEach(seat => seat.classList.add('drawing'));
+
+            // 3초 후 추첨 결과를 표시
+            setTimeout(() => {
+                if (soundElement) soundElement.pause();
+                
+                allSeatElements.forEach((seat, index) => {
+                    seat.classList.remove('drawing');
+                    if (index < totalSeats) {
+                        // 중복 없는 번호 배치
+                        seat.textContent = shuffledNumbers[index];
+                    }
+                    // 원래 색상으로 복귀
+                    const clusterId = seat.parentElement.id;
+                    const spec = clusterSpecs.find(s => s.id === clusterId);
+                    seat.style.backgroundColor = spec.defaultColor; 
+                });
+                
+                drawButton.disabled = false;
+                drawButton.textContent = '🔁 다시 추첨하기';
+            }, 3000); // 3초 대기 (사운드 재생 시간 고려)
+        }
+
+        // 초기 좌석 엘리먼트 생성
+        createSeatElements();
+        
+        // 이벤트 리스너 연결
+        drawButton.addEventListener('click', drawSeats);
+        
+        // 페이지 로드 시 바로 추첨 실행
+        window.onload = drawSeats;
+
+    </script>
+</body>
+</html>
